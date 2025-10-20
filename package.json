@@ -1,0 +1,82 @@
+{
+  "name": "carterasanbenitoformat",
+  "version": "1.0.0",
+  "description": "Aplicación de escritorio con Electron y Python para formateo de cartera con auto-actualización.",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "cross-env NODE_ENV=development electron .",
+    "dev": "npm run start",
+    "postinstall": "electron-builder install-app-deps",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "build:python": "node scripts/build-python.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SoyDaniel01/CarteraSanBenitoFormat.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/SoyDaniel01/CarteraSanBenitoFormat/issues"
+  },
+  "homepage": "https://github.com/SoyDaniel01/CarteraSanBenitoFormat#readme",
+  "dependencies": {
+    "electron": "^28.3.3",
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.6.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron-builder": "^26.0.12",
+    "wait-on": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.soydaniel.carterasanbenitoformat",
+    "productName": "CarteraSanBenitoFormat",
+    "asar": true,
+    "files": [
+      "src/**/*",
+      "python/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "extraResources": [
+      {
+        "from": "python/",
+        "to": "python",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "SoyDaniel01",
+        "repo": "CarteraSanBenitoFormat"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
+  }
+}

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cartera San Benito Format</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <header class="header">
+        <h1>Cartera San Benito Format</h1>
+        <p class="subtitle">Procesa archivos Excel con Python desde una interfaz segura.</p>
+      </header>
+
+      <div id="dropzone" class="dropzone">
+        <p><strong>Arrastra y suelta</strong> un archivo .xlsx aquí</p>
+        <p class="muted">o</p>
+        <button id="browseButton" type="button" class="primary ghost">Buscar archivo</button>
+      </div>
+
+      <div id="fileInfo" class="file-info">Ningún archivo seleccionado</div>
+
+      <div class="actions">
+        <button id="convertButton" type="button" class="primary" disabled>Convertir</button>
+        <button id="openOutputButton" type="button" class="secondary" disabled>Abrir carpeta de salida</button>
+      </div>
+
+      <div id="statusMessage" class="status ready">Listo para procesar</div>
+    </section>
+
+  </main>
+
+  <script src="renderer.js" defer></script>
+</body>
+</html>

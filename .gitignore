@@ -1,0 +1,16 @@
+node_modules/
+dist/
+dist-*
+out/
+*.log
+logs/
+.DS_Store
+Thumbs.db
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.spec
+python/build/
+python/dist/
+python/*.egg-info/
