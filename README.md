@@ -2,7 +2,7 @@
 
 Aplicación de escritorio multiplataforma basada en Electron que delega el procesamiento de archivos Excel a Python y soporta actualizaciones automáticas a través de GitHub Releases.
 
-> **Nota:** El flujo de transformación actual en Python es únicamente demostrativo. Reemplázalo por la lógica real de negocio cuando esté disponible.
+> **Nota:** El script Python procesa la hoja `Cartera_CxC_Det_Comple` (limpieza con pandas, totales y estilos con openpyxl) y deja preparadas las demás hojas para sus futuros flujos.
 
 ## Características principales
 
@@ -25,7 +25,7 @@ Aplicación de escritorio multiplataforma basada en Electron que delega el proce
 │       ├── renderer.js    # Lógica del Renderer
 │       └── styles.css     # Estilos base
 ├── python/
-│   ├── processor.py       # Script de procesamiento (placeholder)
+│   ├── processor.py       # Script de procesamiento (Cartera_CxC_Det_Comple)
 │   └── requirements.txt   # Dependencias de Python
 ├── build/                 # Recursos para empaquetado (icons, etc.)
 ├── package.json
@@ -107,7 +107,7 @@ Al ejecutar `npm run dist`, `electron-builder` copiará ese binario al paquete f
 
 ## Próximos pasos sugeridos
 
-1. Reemplazar la lógica de prueba en `python/processor.py` por el flujo real.
+1. Completar los flujos restantes para las hojas auxiliares (Res_Comp, DSE, RSE, etc.).
 2. Ejecutar `npm run build:python` en cada plataforma objetivo para producir el ejecutable definitivo.
 3. Añadir pruebas automatizadas (por ejemplo, scripts Node para validar el pipeline).
 4. Integrar firma de código si la distribución será externa (especialmente macOS).
