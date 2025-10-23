@@ -232,6 +232,18 @@ function registerIpcHandlers() {
       log.info(`[Renderer] ${payload.message}`);
     }
   });
+
+  ipcMain.handle('updater:check-for-updates', async () => {
+    try {
+      const { autoUpdater } = require('electron-updater');
+      log.info('Verificación manual de actualizaciones solicitada');
+      const result = await autoUpdater.checkForUpdatesAndNotify();
+      return { success: true, result };
+    } catch (error) {
+      log.error('Error en verificación manual de actualizaciones:', error);
+      return { success: false, error: error.message };
+    }
+  });
 }
 
 function setupAutoUpdater(updater) {
@@ -242,29 +254,73 @@ function setupAutoUpdater(updater) {
 
   updater.logger = log;
   updater.logger.transports.file.level = 'info';
+  
+  // Configurar opciones del autoUpdater
+  updater.autoDownload = false; // No descargar automáticamente
+  updater.autoInstallOnAppQuit = true; // Instalar al cerrar la app
 
-  updater.on('update-available', () => {
-    log.info('Actualización disponible.');
-    sendToRenderer('update-event', { type: 'available' });
+  updater.on('update-available', (info) => {
+    log.info('Actualización disponible:', info);
+    sendToRenderer('update-event', { 
+      type: 'available', 
+      version: info.version,
+      releaseNotes: info.releaseNotes 
+    });
+    
+    // Preguntar al usuario si quiere descargar
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Actualización Disponible',
+      message: `Se encontró una nueva versión (${info.version}). ¿Deseas descargarla ahora?`,
+      buttons: ['Descargar', 'Más tarde'],
+      defaultId: 0
+    }).then((result) => {
+      if (result.response === 0) {
+        updater.downloadUpdate();
+      }
+    });
   });
 
-  updater.on('update-not-available', () => {
-    log.info('No hay actualizaciones disponibles.');
+  updater.on('update-not-available', (info) => {
+    log.info('No hay actualizaciones disponibles:', info);
     sendToRenderer('update-event', { type: 'not-available' });
   });
 
   updater.on('error', error => {
-    log.error('Error en autoUpdater', error);
-    sendToRenderer('update-event', { type: 'error', message: error?.message ?? String(error) });
+    log.error('Error en autoUpdater:', error);
+    sendToRenderer('update-event', { 
+      type: 'error', 
+      message: error?.message ?? String(error) 
+    });
   });
 
   updater.on('download-progress', progressObj => {
-    sendToRenderer('update-event', { type: 'progress', progress: progressObj });
+    log.info('Progreso de descarga:', progressObj);
+    sendToRenderer('update-event', { 
+      type: 'progress', 
+      progress: progressObj 
+    });
   });
 
-  updater.on('update-downloaded', () => {
-    log.info('Actualización descargada, lista para instalar.');
-    sendToRenderer('update-event', { type: 'downloaded' });
+  updater.on('update-downloaded', (info) => {
+    log.info('Actualización descargada, lista para instalar:', info);
+    sendToRenderer('update-event', { 
+      type: 'downloaded',
+      version: info.version 
+    });
+    
+    // Preguntar al usuario si quiere instalar ahora
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Actualización Descargada',
+      message: 'La actualización se ha descargado. ¿Deseas reiniciar la aplicación ahora para instalarla?',
+      buttons: ['Reiniciar ahora', 'Más tarde'],
+      defaultId: 0
+    }).then((result) => {
+      if (result.response === 0) {
+        updater.quitAndInstall();
+      }
+    });
   });
 }
 
@@ -277,11 +333,22 @@ app.whenReady().then(() => {
   try {
     const { autoUpdater } = require('electron-updater');
     setupAutoUpdater(autoUpdater);
-    autoUpdater.checkForUpdatesAndNotify().catch(error => {
-      log.error('Fallo al buscar actualizaciones', error);
-    });
+    
+    // Verificar actualizaciones al iniciar (solo en producción)
+    if (app.isPackaged) {
+      log.info('Verificando actualizaciones...');
+      autoUpdater.checkForUpdatesAndNotify().catch(error => {
+        log.error('Fallo al buscar actualizaciones:', error);
+        sendToRenderer('update-event', { 
+          type: 'error', 
+          message: `Error al buscar actualizaciones: ${error.message}` 
+        });
+      });
+    } else {
+      log.info('AutoUpdater deshabilitado en modo desarrollo');
+    }
   } catch (error) {
-    log.warn('AutoUpdater deshabilitado o no disponible en modo desarrollo.', error);
+    log.warn('AutoUpdater deshabilitado o no disponible:', error);
   }
 
   app.on('activate', () => {

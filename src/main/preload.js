@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('carteraApi', {
   processFile: (filePath) => ipcRenderer.invoke('processor:run', filePath),
   sendLog: (message) => ipcRenderer.send('log:forward', { message }),
   revealInFolder: (filePath) => ipcRenderer.invoke('system:reveal-in-folder', filePath),
+  checkForUpdates: () => ipcRenderer.invoke('updater:check-for-updates'),
   onLogMessage: createSubscription('log-message'),
   onProcessingState: createSubscription('processing-state'),
   onUpdateEvent: createSubscription('update-event')
