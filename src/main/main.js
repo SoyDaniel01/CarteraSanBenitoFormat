@@ -84,7 +84,7 @@ function createMainWindow() {
     minWidth: 820,
     minHeight: 520,
     show: false,
-    title: 'Cartera San Benito Format',
+    title: 'Cartera San Benito',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
