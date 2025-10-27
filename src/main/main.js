@@ -42,39 +42,57 @@ function resolveDevPython() {
  */
 function getPythonInvocation() {
   const scriptPath = path.join(projectRoot, 'python', 'processor.py');
+  const platform = process.platform;
 
   if (!app.isPackaged) {
+    log.info('Modo desarrollo: buscando Python local');
     const localPython = resolveDevPython();
     if (localPython) {
+      log.info(`Usando Python local: ${localPython}`);
       return { command: localPython, args: [scriptPath] };
     }
 
-    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    const pythonCmd = platform === 'win32' ? 'python' : 'python3';
+    log.info(`Usando Python del sistema: ${pythonCmd}`);
     return { command: pythonCmd, args: [scriptPath] };
   }
 
+  log.info('Modo producción: buscando ejecutable Python empaquetado');
   const resourcesPath = process.resourcesPath;
   const packagedDir = path.join(resourcesPath, 'python');
-  const executableName = process.platform === 'win32' ? 'processor.exe' : 'processor';
+  const executableName = platform === 'win32' ? 'processor.exe' : 'processor';
+
+  log.info(`Buscando en: ${packagedDir}`);
+  log.info(`Nombre esperado: ${executableName}`);
 
   const executableCandidates = [
     path.join(packagedDir, executableName),
-    path.join(packagedDir, 'processor', executableName),
+    path.join(packagedDir, 'bin', executableName),
     path.join(packagedDir, 'dist', executableName),
     path.join(packagedDir, 'dist', 'processor', executableName),
-    path.join(packagedDir, 'bin', executableName)
+    path.join(packagedDir, 'processor', executableName)
   ];
 
   for (const candidate of executableCandidates) {
+    log.info(`Verificando: ${candidate}`);
     if (fs.existsSync(candidate)) {
+      log.info(`✅ Ejecutable encontrado: ${candidate}`);
       return { command: candidate, args: [] };
     }
+    log.info(`❌ No encontrado: ${candidate}`);
   }
 
-  // Fallback to python runtime shipped inside extraResources
   const packagedScript = path.join(packagedDir, 'processor.py');
-  const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-  return { command: pythonCmd, args: [packagedScript] };
+  log.warn(`Ejecutable no localizado. Intentando usar script Python: ${packagedScript}`);
+
+  if (fs.existsSync(packagedScript)) {
+    log.info(`✅ Script Python encontrado: ${packagedScript}`);
+    const pythonCmd = platform === 'win32' ? 'python' : 'python3';
+    return { command: pythonCmd, args: [packagedScript] };
+  }
+
+  log.error(`❌ Script Python no encontrado en ${packagedScript}`);
+  throw new Error(`No se pudo encontrar un procesador Python empaquetado en ${packagedDir}`);
 }
 
 function createMainWindow() {
@@ -127,7 +145,18 @@ function runPythonProcessor(inputPath, outputPath) {
       log.info(`Invocando Python: ${command} ${allArgs.join(' ')}`);
       sendToRenderer('log-message', { level: 'info', message: `Ejecutando procesamiento con Python (${path.basename(inputPath)})` });
 
-      const pyProcess = spawn(command, allArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+      // Verificar que el comando existe antes de ejecutarlo
+      if (!fs.existsSync(command) && !command.includes('python')) {
+        const error = new Error(`El ejecutable no existe: ${command}`);
+        log.error(error.message);
+        reject(error);
+        return;
+      }
+
+      const pyProcess = spawn(command, allArgs, { 
+        stdio: ['ignore', 'pipe', 'pipe'],
+        shell: process.platform === 'win32' // Usar shell en Windows para resolver comandos
+      });
 
       pyProcess.stdout.on('data', data => {
         const message = data.toString().trim();
@@ -146,8 +175,17 @@ function runPythonProcessor(inputPath, outputPath) {
       });
 
       pyProcess.on('error', error => {
-        log.error('Error al ejecutar Python', error);
-        reject(error);
+        log.error('Error al ejecutar Python:', error);
+        let errorMessage = error.message;
+        
+        if (error.code === 'ENOENT') {
+          errorMessage = `No se pudo encontrar el ejecutable: ${command}. Verifica que Python esté instalado correctamente.`;
+        } else if (error.code === 9009) {
+          errorMessage = `Error 9009: No se pudo ejecutar el comando Python. Verifica que Python esté en el PATH del sistema.`;
+        }
+        
+        sendToRenderer('log-message', { level: 'error', message: errorMessage });
+        reject(new Error(errorMessage));
       });
 
       pyProcess.on('close', code => {
@@ -155,12 +193,22 @@ function runPythonProcessor(inputPath, outputPath) {
           log.info(`Procesamiento finalizado. Archivo listo en ${outputPath}`);
           resolve(outputPath);
         } else {
-          const err = new Error(`Python finalizó con código ${code}`);
+          let errorMessage = `Python finalizó con código ${code}`;
+          
+          if (code === 9009) {
+            errorMessage = `Error 9009: No se pudo encontrar o ejecutar Python. Verifica la instalación.`;
+          } else if (code === 1) {
+            errorMessage = `Error en el procesamiento Python. Revisa el archivo de entrada.`;
+          }
+          
+          log.error(errorMessage);
+          const err = new Error(errorMessage);
           err.code = code;
           reject(err);
         }
       });
     } catch (err) {
+      log.error('Error en runPythonProcessor:', err);
       reject(err);
     }
   });

@@ -1,0 +1,74 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CSC_IDENTITY_AUTO_DISCOVERY: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r python/requirements.txt
+          python -m pip install pyinstaller
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Python processor
+        run: npm run build:python
+
+      - name: Verify generated processor.exe
+        shell: pwsh
+        run: |
+          $exe = Join-Path (Resolve-Path python) 'processor.exe'
+          if (-not (Test-Path $exe)) {
+            Write-Error "processor.exe no encontrado en $exe"
+          } else {
+            Write-Host "processor.exe encontrado en $exe"
+          }
+
+      - name: Build Windows distributables
+        run: npm run dist:win
+
+      - name: Ensure processor.exe bundled
+        shell: pwsh
+        run: |
+          $bundlePath = Join-Path (Resolve-Path 'dist/win-unpacked/resources/python') 'processor.exe'
+          if (-not (Test-Path $bundlePath)) {
+            Write-Error "processor.exe no fue empaquetado correctamente. Ruta esperada: $bundlePath"
+          } else {
+            Write-Host "processor.exe empaquetado en $bundlePath"
+          }
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-dist
+          path: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.yml
+            dist/*.blockmap

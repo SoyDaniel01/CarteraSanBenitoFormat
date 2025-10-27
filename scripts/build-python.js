@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
  * Build the Python processor into a standalone executable using PyInstaller.
+ * The resulting binary is copied to python/processor[.exe] so electron-builder
+ * bundles it under resources/python/ in every platform.
  */
 const { spawnSync } = require('child_process');
 const path = require('path');
@@ -54,9 +56,31 @@ function ensurePyInstaller(pythonExecutable) {
   }
 }
 
+function cleanPreviousBinaries(targetName) {
+  const candidates = [
+    path.join(pythonDir, 'processor'),
+    path.join(pythonDir, 'processor.exe')
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate) && path.basename(candidate) !== targetName) {
+      fs.rmSync(candidate, { force: true });
+    }
+  }
+}
+
+function copyArtifactToPythonDir(sourcePath, targetName) {
+  const targetPath = path.join(pythonDir, targetName);
+  fs.copyFileSync(sourcePath, targetPath);
+  fs.chmodSync(targetPath, 0o755);
+  console.log(`Ejecutable disponible en ${targetPath}`);
+}
+
 function runPyInstaller(pythonExecutable) {
   const distPath = path.join(pythonDir, 'dist');
   const workPath = path.join(pythonDir, 'build');
+  const platform = process.platform;
+  const targetName = platform === 'win32' ? 'processor.exe' : 'processor';
 
   const args = [
     '-m',
@@ -72,27 +96,28 @@ function runPyInstaller(pythonExecutable) {
     '--clean'
   ];
 
+  console.log(`Construyendo ejecutable Python para plataforma ${platform}…`);
   const result = spawnSync(pythonExecutable, args, { cwd: projectRoot, stdio: 'inherit' });
 
   if (result.status !== 0) {
     throw new Error('Falló la construcción del procesador de Python.');
   }
 
-  const executableName = process.platform === 'win32' ? 'processor.exe' : 'processor';
-  const outputPath = path.join(distPath, executableName);
-
-  if (!fs.existsSync(outputPath)) {
-    throw new Error(`No se encontró el ejecutable generado en ${outputPath}`);
+  const artifactPath = path.join(distPath, targetName);
+  if (!fs.existsSync(artifactPath)) {
+    throw new Error(`No se encontró el ejecutable generado en ${artifactPath}`);
   }
 
-  console.log(`Procesador Python empaquetado correctamente: ${outputPath}`);
+  cleanPreviousBinaries(targetName);
+  copyArtifactToPythonDir(artifactPath, targetName);
 
-  return outputPath;
+  console.log(`Procesador Python empaquetado correctamente: ${artifactPath}`);
+  return artifactPath;
 }
 
 function main() {
   if (!fs.existsSync(processorScript)) {
-    console.error('No se encontró python/processor.py. Aborting.');
+    console.error('No se encontró python/processor.py. Abortando.');
     process.exit(1);
   }
 
