@@ -111,7 +111,3 @@ Al ejecutar `npm run dist`, `electron-builder` copiará ese binario al paquete f
 2. Ejecutar `npm run build:python` en cada plataforma objetivo para producir el ejecutable definitivo.
 3. Añadir pruebas automatizadas (por ejemplo, scripts Node para validar el pipeline).
 4. Integrar firma de código si la distribución será externa (especialmente macOS).
-
----
-
-Con esta base tienes un esqueleto funcional listo para iterar sobre el procesamiento real de cartera y desplegar actualizaciones a los usuarios finales.
