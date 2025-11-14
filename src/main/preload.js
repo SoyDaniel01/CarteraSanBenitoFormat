@@ -1,3 +1,4 @@
+//holaaa
 const { contextBridge, ipcRenderer } = require('electron');
 
 function createSubscription(channel) {
